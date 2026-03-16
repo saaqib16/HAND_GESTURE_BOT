@@ -1,90 +1,68 @@
-# main.py
 import cv2
-import threading
-import tkinter as tk
-from tkinter import Label, Button
-from PIL import Image, ImageTk
-from gesture_detector import detect_gesture  # your custom function
 
-class HandGestureApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Hand Gesture Detection Bot")
-        self.root.geometry("900x600")
-        self.root.configure(bg="#1e1e1e")
+from gesture_detector import detect_gesture
+from speech import SpeechAnnouncer
 
-        # Webcam feed label
-        self.video_label = Label(self.root, bg="#1e1e1e")
-        self.video_label.pack(pady=20)
 
-        # Detected gesture display
-        self.result_label = Label(
-            self.root, text="Gesture: None", font=("Arial", 16),
-            bg="#1e1e1e", fg="#00ffcc"
-        )
-        self.result_label.pack()
+def main():
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        raise RuntimeError("Could not open the webcam.")
 
-        # Buttons
-        self.start_btn = Button(
-            self.root, text="Start Detection", command=self.start_detection,
-            bg="#00bfff", fg="white", font=("Arial", 12, "bold"), width=15
-        )
-        self.start_btn.pack(pady=10)
+    window_name = "Hand Gesture Detection Bot"
+    announcer = SpeechAnnouncer()
+    stable_gesture = "None"
+    frame_streak = 0
+    min_stable_frames = 8
 
-        self.stop_btn = Button(
-            self.root, text="Stop", command=self.stop_detection,
-            bg="#ff4d4d", fg="white", font=("Arial", 12, "bold"), width=15
-        )
-        self.stop_btn.pack(pady=10)
-
-        self.exit_btn = Button(
-            self.root, text="Exit", command=self.root.quit,
-            bg="#333333", fg="white", font=("Arial", 12, "bold"), width=15
-        )
-        self.exit_btn.pack(pady=10)
-
-        # Camera setup
-        self.cap = None
-        self.running = False
-
-    def start_detection(self):
-        if not self.running:
-            self.running = True
-            self.cap = cv2.VideoCapture(0)
-            threading.Thread(target=self.update_frame).start()
-
-    def stop_detection(self):
-        self.running = False
-        if self.cap:
-            self.cap.release()
-            self.video_label.config(image='')
-
-    def update_frame(self):
-        while self.running and self.cap.isOpened():
-            ret, frame = self.cap.read()
+    try:
+        while True:
+            ret, frame = cap.read()
             if not ret:
                 break
 
-            # Flip and detect gesture
             frame = cv2.flip(frame, 1)
             gesture = detect_gesture(frame)
 
-            # Update label
-            self.result_label.config(text=f"Gesture: {gesture}")
+            # Speak only after the same gesture has been seen for a few frames.
+            if gesture == stable_gesture:
+                frame_streak += 1
+            else:
+                stable_gesture = gesture
+                frame_streak = 1
 
-            # Convert OpenCV image to PIL
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(rgb_frame)
-            imgtk = ImageTk.PhotoImage(image=img)
+            if frame_streak == min_stable_frames:
+                announcer.announce(stable_gesture)
 
-            self.video_label.imgtk = imgtk
-            self.video_label.configure(image=imgtk)
+            cv2.putText(
+                frame,
+                f"Gesture: {gesture}",
+                (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
+            cv2.putText(
+                frame,
+                "Press q to quit",
+                (20, 80),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
 
-        if self.cap:
-            self.cap.release()
+            cv2.imshow(window_name, frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+    finally:
+        announcer.stop()
+        cap.release()
+        cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = HandGestureApp(root)
-    root.mainloop()
-    gesture = detect_gesture(frame)
+    main()
