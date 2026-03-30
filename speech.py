@@ -41,11 +41,18 @@ class SpeechAnnouncer:
 
     def _speech_text(self, text):
         spoken_labels = {
-            "Fist ✊": "I would punch u",
+            "Fist ✊": "Sorry",
             "Open Hand ✋": "Stop It",
-            "Thumbs Up 👍": "Okay Sir",
+            "Thumbs Up 👍": "Good Job",
+            "Thumbs Down 👎": "Thumbs Down",
             "Peace ✌️": "Peace",
-            "OK 👌": "Nice",
+            "OK 👌": "Okay Sir",
+            "Pointing Up ☝️": "Pointing Up",
+            "Call Me 🤙": "Call Me",
+            "I Love You 🤟": "I Love You",
+            "Rock On 🤘": "Rock On",
+            "Three 3️⃣": "Three",
+            "Four 4️⃣": "Four",
         }
         return spoken_labels.get(text, text)
 
